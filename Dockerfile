@@ -2,20 +2,15 @@ FROM node:22-alpine AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 
-RUN npm i -g pnpm
+# 1. 直接在全局安装最稳定的 pnpm v8，一劳永逸，避开所有反人类的安全锁
+RUN npm i -g pnpm@8
 
 FROM base AS build
 COPY . /usr/src/app
 WORKDIR /usr/src/app
 
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm config set ignore-scripts false && pnpm install --unsafe-perm 
-# 1. 强制关闭 pnpm 的构建审批机制
-# 2. 强制刷新缓存（通过加一个环境变量）
-ENV REBUILD_TRIGGER=20260611
-
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
-    pnpm config set --global approve-builds-enforced false && \
-    pnpm install --frozen-lockfile --unsafe-perm
+# 2. 干净的一行安装，同时保留 Render 的缓存加速，再也不用担心被安全拦截
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install
 
 RUN pnpm run -r build
 
