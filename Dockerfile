@@ -2,14 +2,17 @@ FROM node:22-alpine AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 
-# 1. 直接在全局安装最稳定的 pnpm v8，一劳永逸，避开所有反人类的安全锁
+# 1. 【核心修复】在 Alpine 基础镜像中安装 openssl，让 Prisma 能够正确检测并加载 libssl 依赖
+RUN apk add --no-cache openssl
+
+# 2. 全局安装 pnpm v8
 RUN npm i -g pnpm@8
 
 FROM base AS build
 COPY . /usr/src/app
 WORKDIR /usr/src/app
 
-# 2. 干净的一行安装，同时保留 Render 的缓存加速，再也不用担心被安全拦截
+# 3. 干净的一行安装，同时保留 Render 的缓存加速
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install
 
 RUN pnpm run -r build
