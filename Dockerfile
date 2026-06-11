@@ -20,7 +20,7 @@ RUN pnpm run -r build
 RUN pnpm deploy --filter=server --prod /app
 RUN pnpm deploy --filter=server --prod /app-sqlite
 
-# 【核心修复】不仅改 provider，还要把 MySQL 特有的 @db.Int() 尾巴擦掉，彻底兼容 Neon (PostgreSQL)
+# 【核心修复1】修改为 postgresql 驱动并清理 MySQL 方言
 RUN cd /app && \
     sed -i 's/provider = "mysql"/provider = "postgresql"/g' prisma/schema.prisma && \
     sed -i 's/ @db.Int()//g' prisma/schema.prisma && \
@@ -68,4 +68,5 @@ ENV DATABASE_TYPE="postgres"
 
 RUN chmod +x ./docker-bootstrap.sh
 
-CMD ["./docker-bootstrap.sh"]
+# 【核心修复2】修改启动命令！在程序正式跑起来前，先强制执行 db push，把所有数据表（货架）在 Neon 里创建出来
+CMD ["sh", "-c", "pnpm exec prisma db push && ./docker-bootstrap.sh"]
