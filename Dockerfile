@@ -2,7 +2,7 @@ FROM node:22-alpine AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 
-# 1. 【核心修复】在 Alpine 基础镜像中安装 openssl，让 Prisma 能够正确检测并加载 libssl 依赖
+# 1. 安装 openssl 依赖
 RUN apk add --no-cache openssl
 
 # 2. 全局安装 pnpm v8
@@ -20,7 +20,11 @@ RUN pnpm run -r build
 RUN pnpm deploy --filter=server --prod /app
 RUN pnpm deploy --filter=server --prod /app-sqlite
 
-RUN cd /app && pnpm exec prisma generate
+# 【核心修复】因为你使用的是 Neon (PostgreSQL)，而源码默认配置的是 mysql。
+# 我们在编译前，用 sed 命令把 schema.prisma 里的 provider 动态修改为 postgresql，完美对接 Neon！
+RUN cd /app && \
+    sed -i 's/provider = "mysql"/provider = "postgresql"/g' prisma/schema.prisma && \
+    pnpm exec prisma generate
 
 RUN cd /app-sqlite && \
     rm -rf ./prisma && \
@@ -60,7 +64,10 @@ ENV SERVER_ORIGIN_URL=""
 ENV MAX_REQUEST_PER_MINUTE=60
 ENV AUTH_CODE=""
 ENV DATABASE_URL=""
+# 【配套配置】告诉 wewe-rss 运行时我们用的是 postgres
+ENV DATABASE_TYPE="postgres"
 
 RUN chmod +x ./docker-bootstrap.sh
 
+CMD ["./docker-bootstrap.sh"]
 CMD ["./docker-bootstrap.sh"]
