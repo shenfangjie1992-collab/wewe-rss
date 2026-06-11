@@ -9,6 +9,13 @@ COPY . /usr/src/app
 WORKDIR /usr/src/app
 
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm config set ignore-scripts false && pnpm install --unsafe-perm 
+# 1. 强制关闭 pnpm 的构建审批机制
+# 2. 强制刷新缓存（通过加一个环境变量）
+ENV REBUILD_TRIGGER=20260611
+
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+    pnpm config set --global approve-builds-enforced false && \
+    pnpm install --frozen-lockfile --unsafe-perm
 
 RUN pnpm run -r build
 
